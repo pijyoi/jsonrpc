@@ -26,7 +26,7 @@ static int method_subtract(json_t *json_params, json_t **result)
 	}
 
 	if (rc==-1) {
-		*result = jsonrpc_error_object(JSONRPC_INVALID_PARAMS, json_string(error.text));
+		*result = jsonrpc_error_object(JSONRPC_INVALID_PARAMS, NULL, json_string(error.text));
 		return JSONRPC_INVALID_PARAMS;
 	}
 	
