@@ -248,7 +248,10 @@ char *jsonrpc_handler(const char *input, size_t input_len, struct jsonrpc_method
 	} else {
 		json_response = jsonrpc_handle_request_single(json_request, method_table);
 	}
-	
+
+	if (json_request)
+		json_decref(json_request);
+
 	if (json_response)
 		output = json_dumps(json_response, JSON_INDENT(2));
 	return output;
