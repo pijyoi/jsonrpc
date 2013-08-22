@@ -1,4 +1,7 @@
-#include <czmq.h>
+#include <string.h>
+#include <assert.h>
+
+#include <zmq.h>
 #include "jsonrpc.h"
 
 static int method_echo(json_t *json_params, json_t **result)
@@ -56,27 +59,32 @@ static struct jsonrpc_method_entry_t method_table[] = {
 
 int main()
 {
-	zctx_t *ctx = zctx_new();
-	void *sock = zsocket_new(ctx, ZMQ_REP);
-	int port = zsocket_bind(sock, "tcp://127.0.0.1:*");
-	printf("bound to port %d\n", port);
+	void *ctx = zmq_ctx_new();
+	void *sock = zmq_socket(ctx, ZMQ_REP);
+	int rc = zmq_bind(sock, "tcp://127.0.0.1:10000");
+	assert(rc!=-1);
 	
-	while (1) {
-		zmsg_t *msg = zmsg_recv(sock);
-		zframe_t *frame = zmsg_first(msg);
-		
-		char *output = jsonrpc_handler((char *)zframe_data(frame), zframe_size(frame), method_table);
+	while (1) 
+	{
+		zmq_msg_t msg;
+		zmq_msg_init(&msg);
+		zmq_msg_recv(&msg, sock, 0);
+
+		char *output = jsonrpc_handler((char *)zmq_msg_data(&msg), 
+				zmq_msg_size(&msg), method_table);
+
+		zmq_msg_close(&msg);
+
 		if (output) {
-			zstr_send(sock, output);
+			zmq_send(sock, output, strlen(output), 0);
 			free(output);
 		} else {
-			zstr_send(sock, "");
+			zmq_send(sock, "", 0, 0);
 		}
-		
-		zmsg_destroy(&msg);
 	}
 	
-	zctx_destroy(&ctx);
+	zmq_close(sock);
+	zmq_ctx_destroy(ctx);
 	
 	return 0;
 }
