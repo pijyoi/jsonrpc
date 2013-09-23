@@ -22,24 +22,6 @@ zsock.connect("tcp://127.0.0.1:10000")
 
 jrpc = JRPC()
 
-# test "echo" method
-req = jrpc.make_req("echo", [10, 5])
-zsock.send_json(req)
-rep = zsock.recv_json()
-assert(rep['result']==req['params'])
-
-# test "sum" method and batch
-batchreq = []
-for k in range(10):
-	batchreq.append(jrpc.make_req("sum", range(1+k)))
-zsock.send_json(batchreq)
-batchrep = zsock.recv_json()
-for k in range(10):
-	assert(batchrep[k]['result']==sum(range(1+k)))
-
-
-
-
 # the following tests are from http://www.jsonrpc.org/specification
 
 

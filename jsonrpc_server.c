@@ -4,6 +4,94 @@
 #include <zmq.h>
 #include "jsonrpc.h"
 
+static char *json_value_as_string(json_t *value)
+{
+	// caller to free the returned string
+
+	char buffer[64];
+
+	switch (json_typeof(value)) {
+		case JSON_OBJECT:
+		case JSON_ARRAY:
+			return json_dumps(value, JSON_COMPACT);
+		case JSON_STRING:
+			return strdup(json_string_value(value));
+		case JSON_INTEGER:
+			snprintf(buffer, sizeof(buffer), "%" JSON_INTEGER_FORMAT, json_integer_value(value));
+			return strdup(buffer);
+		case JSON_REAL:
+			snprintf(buffer, sizeof(buffer), "%f", json_real_value(value));
+			return strdup(buffer);
+		case JSON_TRUE:
+			return strdup("True");
+		case JSON_FALSE:
+			return strdup("False");
+		case JSON_NULL:
+			return strdup("None");
+	}
+	assert(0);
+}
+
+static int method_test_foreach(json_t *json_params, json_t **result)
+{
+	if (json_is_array(json_params)) {
+#if JANSSON_VERSION_HEX >= 0x020500
+		size_t index;
+		json_t *value;
+		json_array_foreach(json_params, index, value) {
+			char *str = json_value_as_string(value);
+			printf("%ld: %s\n", index, str);
+			free(str);
+		}
+#else
+		printf("JSON_ARRAY_FOREACH unsupported\n");
+#endif
+	} else if (json_is_object(json_params)) {
+		const char *key;
+		json_t *value;
+		json_object_foreach(json_params, key, value) {
+			char *str = json_value_as_string(value);
+			printf("%s: %s\n", key, str);
+			free(str);
+		}
+	} else {
+		assert(0);
+	}
+
+	return 0;
+}
+
+static int method_test_iter(json_t *json_params, json_t **result)
+{
+	if (json_is_array(json_params)) {
+		size_t len = json_array_size(json_params);
+		size_t idx;
+		for (idx = 0; idx < len; idx++) {
+			json_t *value = json_array_get(json_params, idx);
+
+			char *str = json_value_as_string(value);
+			printf("%ld: %s\n", idx, str);
+			free(str);
+		}
+	} else if (json_is_object(json_params)) {
+		void *iter = json_object_iter(json_params);
+		while (iter)
+		{
+			const char *key = json_object_iter_key(iter);
+			json_t *value = json_object_iter_value(iter);
+
+			char *str = json_value_as_string(value);
+			printf("%s: %s\n", key, str);
+			free(str);
+
+			iter = json_object_iter_next(json_params, iter);
+		}
+	} else {
+		assert(0);
+	}
+
+	return 0;
+}
 static int method_echo(json_t *json_params, json_t **result)
 {
 	json_incref(json_params);
@@ -51,6 +139,8 @@ static int method_sum(json_t *json_params, json_t **result)
 }
 
 static struct jsonrpc_method_entry_t method_table[] = {
+	{ "foreach", method_test_foreach, "o" },
+	{ "iterate", method_test_iter, "o" },
 	{ "echo", method_echo, "o" }, 
 	{ "subtract", method_subtract, "o" }, 
 	{ "sum", method_sum, "[]" }, 
