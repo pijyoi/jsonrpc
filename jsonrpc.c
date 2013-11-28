@@ -163,7 +163,8 @@ json_t *jsonrpc_validate_params(json_t *json_params, const char *params_spec)
 	return data ? jsonrpc_error_object(JSONRPC_INVALID_PARAMS, NULL, data) : NULL;
 }
 
-json_t *jsonrpc_handle_request_single(json_t *json_request, struct jsonrpc_method_entry_t method_table[])
+json_t *jsonrpc_handle_request_single(json_t *json_request, struct jsonrpc_method_entry_t method_table[],
+	void *userdata)
 {
 	int rc;
 	json_t *json_response;
@@ -200,7 +201,7 @@ json_t *jsonrpc_handle_request_single(json_t *json_request, struct jsonrpc_metho
 
 	json_response = NULL;
 	json_result = NULL;
-	rc = entry->funcptr(json_params, &json_result);
+	rc = entry->funcptr(json_params, &json_result, userdata);
 	if (is_notification) {
 		json_decref(json_result);
 		json_result = NULL;
@@ -223,7 +224,8 @@ done:
 	return json_response;
 }
 
-char *jsonrpc_handler(const char *input, size_t input_len, struct jsonrpc_method_entry_t method_table[])
+char *jsonrpc_handler(const char *input, size_t input_len, struct jsonrpc_method_entry_t method_table[],
+	void *userdata)
 {
 	json_t *json_request, *json_response;
 	json_error_t error;
@@ -243,7 +245,7 @@ char *jsonrpc_handler(const char *input, size_t input_len, struct jsonrpc_method
 			json_response = NULL;
 			for (k=0; k < len; k++) {
 				json_t *req = json_array_get(json_request, k);
-				json_t *rep = jsonrpc_handle_request_single(req, method_table);
+				json_t *rep = jsonrpc_handle_request_single(req, method_table, userdata);
 				if (rep) {
 					if (!json_response)
 						json_response = json_array();
@@ -252,7 +254,7 @@ char *jsonrpc_handler(const char *input, size_t input_len, struct jsonrpc_method
 			}
 		}
 	} else {
-		json_response = jsonrpc_handle_request_single(json_request, method_table);
+		json_response = jsonrpc_handle_request_single(json_request, method_table, userdata);
 	}
 
 	if (json_response)

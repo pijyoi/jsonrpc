@@ -28,6 +28,14 @@ zsock.send_json(req)
 rep = zsock.recv_json()
 assert(rep['result']==req['params'])
 
+# test "counter" method and batch
+req = jrpc.make_req("counter")
+zsock.send_json([req]*10)
+batchrep = zsock.recv_json()
+counts = [rep['result'] for rep in batchrep]
+for k in range(1,len(counts)):
+	assert counts[k] - counts[k-1] == 1
+
 # test "sum" method and batch
 batchreq = []
 for k in range(10):

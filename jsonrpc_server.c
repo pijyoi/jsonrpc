@@ -4,6 +4,11 @@
 #include <zmq.h>
 #include "jsonrpc.h"
 
+struct user_context_t
+{
+	int count;
+};
+
 static char *json_value_as_string(json_t *value)
 {
 	// caller to free the returned string
@@ -32,7 +37,7 @@ static char *json_value_as_string(json_t *value)
 	assert(0);
 }
 
-static int method_test_foreach(json_t *json_params, json_t **result)
+static int method_test_foreach(json_t *json_params, json_t **result, void *userdata)
 {
 	if (json_is_array(json_params)) {
 #if JANSSON_VERSION_HEX >= 0x020500
@@ -61,7 +66,7 @@ static int method_test_foreach(json_t *json_params, json_t **result)
 	return 0;
 }
 
-static int method_test_iter(json_t *json_params, json_t **result)
+static int method_test_iter(json_t *json_params, json_t **result, void *userdata)
 {
 	if (json_is_array(json_params)) {
 		size_t len = json_array_size(json_params);
@@ -92,14 +97,22 @@ static int method_test_iter(json_t *json_params, json_t **result)
 
 	return 0;
 }
-static int method_echo(json_t *json_params, json_t **result)
+static int method_echo(json_t *json_params, json_t **result, void *userdata)
 {
 	json_incref(json_params);
 	*result = json_params;
 	return 0;
 }
 
-static int method_subtract(json_t *json_params, json_t **result)
+static int method_counter(json_t *json_params, json_t **result, void *userdata)
+{
+	struct user_context_t *userctx = (struct user_context_t *)userdata;
+	userctx->count++;
+	*result = json_integer(userctx->count);
+	return 0;
+}
+
+static int method_subtract(json_t *json_params, json_t **result, void *userdata)
 {
 	size_t flags = 0;
 	json_error_t error;
@@ -125,7 +138,7 @@ static int method_subtract(json_t *json_params, json_t **result)
 	return 0;
 }
 
-static int method_sum(json_t *json_params, json_t **result)
+static int method_sum(json_t *json_params, json_t **result, void *userdata)
 {
 	double total = 0;
 	size_t len = json_array_size(json_params);
@@ -142,6 +155,7 @@ static struct jsonrpc_method_entry_t method_table[] = {
 	{ "foreach", method_test_foreach, "o" },
 	{ "iterate", method_test_iter, "o" },
 	{ "echo", method_echo, "o" }, 
+	{ "counter", method_counter, "" },
 	{ "subtract", method_subtract, "o" }, 
 	{ "sum", method_sum, "[]" }, 
 	{ NULL },
@@ -153,6 +167,8 @@ int main()
 	void *sock = zmq_socket(ctx, ZMQ_REP);
 	int rc = zmq_bind(sock, "tcp://127.0.0.1:10000");
 	assert(rc!=-1);
+
+	struct user_context_t userctx = {0};
 	
 	while (1) 
 	{
@@ -161,7 +177,7 @@ int main()
 		zmq_msg_recv(&msg, sock, 0);
 
 		char *output = jsonrpc_handler((char *)zmq_msg_data(&msg), 
-				zmq_msg_size(&msg), method_table);
+				zmq_msg_size(&msg), method_table, &userctx);
 
 		zmq_msg_close(&msg);
 
