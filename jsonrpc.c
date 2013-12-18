@@ -210,12 +210,8 @@ json_t *jsonrpc_handle_request_single(json_t *json_request, struct jsonrpc_metho
 	} else {
 		if (rc==0) {
 			json_response = jsonrpc_result_response(json_id, json_result);
-		} else if (rc==JSONRPC_INVALID_PARAMS) {
-			json_response = jsonrpc_error_response(json_id,
-					jsonrpc_error_object(JSONRPC_INVALID_PARAMS, json_result));
 		} else {
-			json_response = jsonrpc_error_response(json_id,
-					jsonrpc_error_object(JSONRPC_INTERNAL_ERROR, json_result));
+			json_response = jsonrpc_error_response(json_id, json_result);
 		}
 	}
 
