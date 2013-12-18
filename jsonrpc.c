@@ -6,11 +6,13 @@
 #include <jansson.h>
 #include "jsonrpc.h"
 
-json_t *jsonrpc_error_object(int code, const char *message, json_t *data)
+json_t *jsonrpc_error_object(int code, json_t *data)
 {
 	/* reference to data is stolen */
 
 	json_t *json;
+
+	const char *message = "";
 
 	switch (code) {
 		case JSONRPC_PARSE_ERROR:
@@ -134,7 +136,7 @@ invalid:
 	if (!valid_id)
 		*json_id = NULL;
 	return jsonrpc_error_response(*json_id,
-		jsonrpc_error_object(JSONRPC_INVALID_REQUEST,NULL, data));
+		jsonrpc_error_object(JSONRPC_INVALID_REQUEST, data));
 }
 
 json_t *jsonrpc_validate_params(json_t *json_params, const char *params_spec)
@@ -160,7 +162,7 @@ json_t *jsonrpc_validate_params(json_t *json_params, const char *params_spec)
 		}
 	}
 
-	return data ? jsonrpc_error_object(JSONRPC_INVALID_PARAMS, NULL, data) : NULL;
+	return data ? jsonrpc_error_object(JSONRPC_INVALID_PARAMS, data) : NULL;
 }
 
 json_t *jsonrpc_handle_request_single(json_t *json_request, struct jsonrpc_method_entry_t method_table[],
@@ -187,7 +189,7 @@ json_t *jsonrpc_handle_request_single(json_t *json_request, struct jsonrpc_metho
 	}
 	if (entry->name==NULL) {
 		json_response = jsonrpc_error_response(json_id,
-				jsonrpc_error_object(JSONRPC_METHOD_NOT_FOUND, NULL, NULL));
+				jsonrpc_error_object(JSONRPC_METHOD_NOT_FOUND, NULL));
 		goto done;
 	}
 
@@ -210,9 +212,10 @@ json_t *jsonrpc_handle_request_single(json_t *json_request, struct jsonrpc_metho
 			json_response = jsonrpc_result_response(json_id, json_result);
 		} else if (rc==JSONRPC_INVALID_PARAMS) {
 			json_response = jsonrpc_error_response(json_id,
-					jsonrpc_error_object(JSONRPC_INVALID_PARAMS, NULL, json_result));
+					jsonrpc_error_object(JSONRPC_INVALID_PARAMS, json_result));
 		} else {
-			json_response = jsonrpc_error_response(json_id, json_result);
+			json_response = jsonrpc_error_response(json_id,
+					jsonrpc_error_object(JSONRPC_INTERNAL_ERROR, json_result));
 		}
 	}
 
@@ -234,12 +237,12 @@ char *jsonrpc_handler(const char *input, size_t input_len, struct jsonrpc_method
 	json_request = json_loadb(input, input_len, 0, &error);
 	if (!json_request) {
 		json_response = jsonrpc_error_response(NULL,
-				jsonrpc_error_object(JSONRPC_PARSE_ERROR, NULL, NULL));
+				jsonrpc_error_object(JSONRPC_PARSE_ERROR, NULL));
 	} else if json_is_array(json_request) {
 		size_t len = json_array_size(json_request);
 		if (len==0) {
 			json_response = jsonrpc_error_response(NULL,
-					jsonrpc_error_object(JSONRPC_INVALID_REQUEST, NULL, NULL));
+					jsonrpc_error_object(JSONRPC_INVALID_REQUEST, NULL));
 		} else {
 			size_t k;
 			json_response = NULL;
