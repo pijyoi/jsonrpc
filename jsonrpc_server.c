@@ -100,9 +100,15 @@ static int method_test_iter(json_t *json_params, json_t **result, void *userdata
 
 static int method_test_apperror(json_t *json_params, json_t **result, void *userdata)
 {
+	/* on error, you can do one of the following: 
+		return -1 and leave result unset
+		return -1 and set result to a proper jsonrpc_error_object
+	*/
+
 	/* example of how to return an application-defined error */
 	*result = jsonrpc_error_object(-12345, "application defined error",
 		json_string("additional information"));
+
 	return -1;
 }
 

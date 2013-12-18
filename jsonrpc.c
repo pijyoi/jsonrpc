@@ -223,6 +223,10 @@ json_t *jsonrpc_handle_request_single(json_t *json_request, struct jsonrpc_metho
 		if (rc==0) {
 			json_response = jsonrpc_result_response(json_id, json_result);
 		} else {
+			if (!json_result) {
+				/* method did not set a jsonrpc_error_object, create a generic error */
+				json_result = jsonrpc_error_object_predefined(JSONRPC_INTERNAL_ERROR, NULL);
+			}
 			json_response = jsonrpc_error_response(json_id, json_result);
 		}
 	}
