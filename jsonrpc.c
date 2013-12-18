@@ -6,13 +6,29 @@
 #include <jansson.h>
 #include "jsonrpc.h"
 
-json_t *jsonrpc_error_object(int code, json_t *data)
+json_t *jsonrpc_error_object(int code, const char *message, json_t *data)
 {
 	/* reference to data is stolen */
 
 	json_t *json;
 
+	if (!message)
+		message = "";
+
+	json = json_pack("{s:i,s:s}", "code", code, "message", message);
+	if (data) {
+		json_object_set_new(json, "data", data);
+	}
+	return json;
+}
+
+json_t *jsonrpc_error_object_predefined(int code, json_t *data)
+{
+	/* reference to data is stolen */
+
 	const char *message = "";
+
+	assert(-32768 <= code && code <= -32000);	// reserved for pre-defined errors
 
 	switch (code) {
 		case JSONRPC_PARSE_ERROR:
@@ -32,11 +48,7 @@ json_t *jsonrpc_error_object(int code, json_t *data)
 			break;
 	}
 
-	json = json_pack("{s:i,s:s}", "code", code, "message", message);
-	if (data) {
-		json_object_set_new(json, "data", data);
-	}
-	return json;
+	return jsonrpc_error_object(code, message, data);
 }
 
 json_t *jsonrpc_error_response(json_t *json_id, json_t *json_error)
@@ -136,7 +148,7 @@ invalid:
 	if (!valid_id)
 		*json_id = NULL;
 	return jsonrpc_error_response(*json_id,
-		jsonrpc_error_object(JSONRPC_INVALID_REQUEST, data));
+		jsonrpc_error_object_predefined(JSONRPC_INVALID_REQUEST, data));
 }
 
 json_t *jsonrpc_validate_params(json_t *json_params, const char *params_spec)
@@ -162,7 +174,7 @@ json_t *jsonrpc_validate_params(json_t *json_params, const char *params_spec)
 		}
 	}
 
-	return data ? jsonrpc_error_object(JSONRPC_INVALID_PARAMS, data) : NULL;
+	return data ? jsonrpc_error_object_predefined(JSONRPC_INVALID_PARAMS, data) : NULL;
 }
 
 json_t *jsonrpc_handle_request_single(json_t *json_request, struct jsonrpc_method_entry_t method_table[],
@@ -189,7 +201,7 @@ json_t *jsonrpc_handle_request_single(json_t *json_request, struct jsonrpc_metho
 	}
 	if (entry->name==NULL) {
 		json_response = jsonrpc_error_response(json_id,
-				jsonrpc_error_object(JSONRPC_METHOD_NOT_FOUND, NULL));
+				jsonrpc_error_object_predefined(JSONRPC_METHOD_NOT_FOUND, NULL));
 		goto done;
 	}
 
@@ -233,12 +245,12 @@ char *jsonrpc_handler(const char *input, size_t input_len, struct jsonrpc_method
 	json_request = json_loadb(input, input_len, 0, &error);
 	if (!json_request) {
 		json_response = jsonrpc_error_response(NULL,
-				jsonrpc_error_object(JSONRPC_PARSE_ERROR, NULL));
+				jsonrpc_error_object_predefined(JSONRPC_PARSE_ERROR, NULL));
 	} else if json_is_array(json_request) {
 		size_t len = json_array_size(json_request);
 		if (len==0) {
 			json_response = jsonrpc_error_response(NULL,
-					jsonrpc_error_object(JSONRPC_INVALID_REQUEST, NULL));
+					jsonrpc_error_object_predefined(JSONRPC_INVALID_REQUEST, NULL));
 		} else {
 			size_t k;
 			json_response = NULL;

@@ -97,6 +97,15 @@ static int method_test_iter(json_t *json_params, json_t **result, void *userdata
 
 	return 0;
 }
+
+static int method_test_apperror(json_t *json_params, json_t **result, void *userdata)
+{
+	/* example of how to return an application-defined error */
+	*result = jsonrpc_error_object(-12345, "application defined error",
+		json_string("additional information"));
+	return -1;
+}
+
 static int method_echo(json_t *json_params, json_t **result, void *userdata)
 {
 	json_incref(json_params);
@@ -130,7 +139,7 @@ static int method_subtract(json_t *json_params, json_t **result, void *userdata)
 	}
 
 	if (rc==-1) {
-		*result = jsonrpc_error_object(JSONRPC_INVALID_PARAMS, json_string(error.text));
+		*result = jsonrpc_error_object_predefined(JSONRPC_INVALID_PARAMS, json_string(error.text));
 		return -1;
 	}
 	
@@ -154,6 +163,7 @@ static int method_sum(json_t *json_params, json_t **result, void *userdata)
 static struct jsonrpc_method_entry_t method_table[] = {
 	{ "foreach", method_test_foreach, "o" },
 	{ "iterate", method_test_iter, "o" },
+	{ "apperror", method_test_apperror, "" },
 	{ "echo", method_echo, "o" }, 
 	{ "counter", method_counter, "" },
 	{ "subtract", method_subtract, "o" }, 
